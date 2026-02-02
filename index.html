@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Productivity Tracker</title>
+  <style>
+    :root {
+      --bg-primary: #0f0f1a;
+      --bg-secondary: #1a1a2e;
+      --bg-card: #16213e;
+      --bg-hover: #1f2b47;
+      --accent: #e94560;
+      --accent-hover: #ff6b6b;
+      --text-primary: #eaeaea;
+      --text-secondary: #8a8a9a;
+      --success: #4ecca3;
+      --success-hover: #6ee7b7;
+      --warning: #ffc107;
+      --time-color: #64b5f6;
+      --check-color: #81c784;
+      --border-radius: 8px;
+      --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      background: var(--bg-secondary);
+      border-bottom: 2px solid var(--bg-card);
+    }
+
+    .nav-tab {
+      flex: 1;
+      padding: 16px 24px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .nav-tab:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-tab.active {
+      color: var(--accent);
+    }
+
+    .nav-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--accent);
+    }
+
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      padding: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      color: var(--accent);
+      margin-bottom: 5px;
+    }
+
+    header p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    /* Create Section */
+    .create-section {
+      background: var(--bg-secondary);
+      padding: 20px;
+      border-radius: var(--border-radius);
+      margin-bottom: 25px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .create-section input {
+      flex: 1;
+      min-width: 200px;
+      padding: 12px 16px;
+      border: none;
+      border-radius: var(--border-radius);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 1rem;
+      outline: none;
+      transition: box-shadow 0.2s;
+    }
+
+    .create-section input:focus {
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+
+    .create-section input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .create-section select {
+      padding: 12px 16px;
+      border: none;
+      border-radius: var(--border-radius);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-size: 1rem;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .create-section select:focus {
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: var(--border-radius);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: var(--bg-primary);
+    }
+
+    .btn-success:hover {
+      background: var(--success-hover);
+    }
+
+    .btn-warning {
+      background: var(--warning);
+      color: var(--bg-primary);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+
+    .btn-danger:hover {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-small {
+      padding: 8px 12px;
+      font-size: 0.8rem;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Activity Cards */
+    .activities-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .activity-card {
+      background: var(--bg-card);
+      border-radius: var(--border-radius);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .activity-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    .activity-card.running {
+      border-left: 4px solid var(--success);
+    }
+
+    .activity-card.check-type {
+      border-left: 4px solid var(--check-color);
+    }
+
+    .activity-card.time-type:not(.running) {
+      border-left: 4px solid var(--time-color);
+    }
+
+    .activity-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .activity-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .activity-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .activity-name input {
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      font-size: 1.1rem;
+      font-weight: 600;
+      width: 100%;
+      outline: none;
+      padding: 2px 0;
+      border-bottom: 2px solid transparent;
+    }
+
+    .activity-name input:focus {
+      border-bottom-color: var(--accent);
+    }
+
+    .type-badge {
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .type-badge.time {
+      background: var(--time-color);
+      color: var(--bg-primary);
+    }
+
+    .type-badge.check {
+      background: var(--check-color);
+      color: var(--bg-primary);
+    }
+
+    .activity-time {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--time-color);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .activity-time.running {
+      color: var(--success);
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      margin-right: 5px;
+    }
+
+    .status-indicator.running {
+      background: var(--success);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .activity-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Check Toggle */
+    .check-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .check-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid var(--check-color);
+      background: transparent;
+      color: var(--check-color);
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .check-btn:hover {
+      background: rgba(129, 199, 132, 0.2);
+    }
+
+    .check-btn.checked {
+      background: var(--check-color);
+      color: var(--bg-primary);
+    }
+
+    .check-status {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .check-status.done {
+      color: var(--check-color);
+      font-weight: 600;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+
+    .empty-state h3 {
+      margin-bottom: 10px;
+      font-size: 1.3rem;
+    }
+
+    /* Progress Section */
+    .progress-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .progress-header h2 {
+      font-size: 1.5rem;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .period-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .period-btn {
+      padding: 10px 20px;
+      background: var(--bg-secondary);
+      border: 2px solid var(--bg-card);
+      color: var(--text-secondary);
+      border-radius: var(--border-radius);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .period-btn:hover {
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .period-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    /* Progress Navigation */
+    .progress-nav {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .progress-nav button {
+      background: var(--bg-card);
+      border: none;
+      color: var(--text-primary);
+      padding: 8px 16px;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.2s;
+    }
+
+    .progress-nav button:hover {
+      background: var(--bg-hover);
+    }
+
+    .progress-nav .current-period {
+      font-size: 1.1rem;
+      font-weight: 600;
+      min-width: 200px;
+      text-align: center;
+    }
+
+    /* Progress Content */
+    .progress-content {
+      background: var(--bg-secondary);
+      border-radius: var(--border-radius);
+      padding: 20px;
+    }
+
+    /* Daily View */
+    .daily-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .daily-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: var(--bg-card);
+      border-radius: var(--border-radius);
+    }
+
+    .daily-item-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .daily-item-name {
+      font-weight: 600;
+    }
+
+    .daily-item-value {
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .daily-item-value.time {
+      color: var(--time-color);
+    }
+
+    .daily-item-value.checked {
+      color: var(--check-color);
+    }
+
+    .daily-item-value.unchecked {
+      color: var(--text-secondary);
+    }
+
+    /* Weekly View */
+    .weekly-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .weekly-activity {
+      background: var(--bg-card);
+      border-radius: var(--border-radius);
+      padding: 15px;
+    }
+
+    .weekly-activity-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .weekly-activity-name {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .weekly-total {
+      font-weight: 700;
+      color: var(--time-color);
+    }
+
+    .weekly-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+    }
+
+    .weekly-day {
+      text-align: center;
+      padding: 8px 4px;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+
+    .weekly-day-label {
+      color: var(--text-secondary);
+      font-size: 0.7rem;
+      margin-bottom: 4px;
+    }
+
+    .weekly-day-value {
+      font-weight: 600;
+    }
+
+    .weekly-day-value.time {
+      color: var(--time-color);
+    }
+
+    .weekly-day-value.checked {
+      color: var(--check-color);
+    }
+
+    .weekly-day-value.unchecked {
+      color: var(--text-secondary);
+    }
+
+    /* Monthly View - Calendar */
+    .monthly-calendar {
+      margin-bottom: 20px;
+    }
+
+    .calendar-header {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      margin-bottom: 5px;
+    }
+
+    .calendar-header-day {
+      text-align: center;
+      padding: 8px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+
+    .calendar-cell {
+      aspect-ratio: 1;
+      background: var(--bg-card);
+      border-radius: 4px;
+      padding: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 0.75rem;
+      min-height: 50px;
+    }
+
+    .calendar-cell.empty {
+      background: transparent;
+    }
+
+    .calendar-cell.today {
+      border: 2px solid var(--accent);
+    }
+
+    .calendar-cell-day {
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .calendar-cell-value {
+      font-size: 0.65rem;
+      font-weight: 600;
+    }
+
+    .calendar-cell-value.time {
+      color: var(--time-color);
+    }
+
+    .calendar-cell-value.checked {
+      color: var(--check-color);
+    }
+
+    .calendar-cell-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 2px;
+    }
+
+    .calendar-cell-dot.checked {
+      background: var(--check-color);
+    }
+
+    .calendar-cell-dot.unchecked {
+      background: var(--text-secondary);
+      opacity: 0.3;
+    }
+
+    /* Activity Selector for Calendar */
+    .activity-selector {
+      margin-bottom: 20px;
+    }
+
+    .activity-selector label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .activity-selector select {
+      width: 100%;
+      max-width: 300px;
+      padding: 10px 15px;
+      background: var(--bg-card);
+      border: none;
+      border-radius: var(--border-radius);
+      color: var(--text-primary);
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    /* Yearly View */
+    .yearly-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+    }
+
+    .yearly-month {
+      background: var(--bg-card);
+      border-radius: var(--border-radius);
+      padding: 15px;
+    }
+
+    .yearly-month-header {
+      font-weight: 600;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--bg-hover);
+    }
+
+    .yearly-month-stats {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .yearly-stat {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+
+    .yearly-stat-name {
+      color: var(--text-secondary);
+    }
+
+    .yearly-stat-value.time {
+      color: var(--time-color);
+      font-weight: 600;
+    }
+
+    .yearly-stat-value.check {
+      color: var(--check-color);
+      font-weight: 600;
+    }
+
+    /* Summary Cards */
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .summary-card {
+      background: var(--bg-card);
+      border-radius: var(--border-radius);
+      padding: 15px;
+      text-align: center;
+    }
+
+    .summary-card-label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+    }
+
+    .summary-card-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .summary-card-value.time {
+      color: var(--time-color);
+    }
+
+    .summary-card-value.check {
+      color: var(--check-color);
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .activity-card {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .activity-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .create-section {
+        flex-direction: column;
+      }
+
+      .weekly-days {
+        grid-template-columns: repeat(7, 1fr);
+      }
+
+      .calendar-cell {
+        min-height: 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="activities">📋 Activities</button>
+      <button class="nav-tab" data-tab="progress">📊 Progress</button>
+    </nav>
+
+    <main class="main-content">
+      <!-- Activities Tab -->
+      <div id="activities-tab" class="tab-content active">
+        <header>
+          <h1>Productivity Tracker</h1>
+          <p>Track your time and daily habits</p>
+        </header>
+
+        <section class="create-section">
+          <input type="text" id="activity-name-input" placeholder="Activity name..." maxlength="50">
+          <select id="activity-type-select">
+            <option value="time">⏱️ Time Tracker</option>
+            <option value="check">✅ Daily Check</option>
+          </select>
+          <button class="btn btn-primary" id="create-btn">
+            ➕ Create
+          </button>
+        </section>
+
+        <div class="activities-list" id="activities-list">
+          <!-- Activities rendered here -->
+        </div>
+      </div>
+
+      <!-- Progress Tab -->
+      <div id="progress-tab" class="tab-content">
+        <div class="progress-header">
+          <h2>📊 Progress Tracker</h2>
+        </div>
+
+        <div class="period-buttons">
+          <button class="period-btn active" data-period="day">Daily</button>
+          <button class="period-btn" data-period="week">Weekly</button>
+          <button class="period-btn" data-period="month">Monthly</button>
+          <button class="period-btn" data-period="year">Yearly</button>
+        </div>
+
+        <div class="progress-nav">
+          <button id="prev-period">◀ Previous</button>
+          <span class="current-period" id="current-period-label">Today</span>
+          <button id="next-period">Next ▶</button>
+        </div>
+
+        <div class="progress-content" id="progress-content">
+          <!-- Progress views rendered here -->
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="ui.js"></script>
+</body>
+</html>

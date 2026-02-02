@@ -1,0 +1,10 @@
+{
+  "activities": {
+    "act_ml5nysxh_r8knar9du": {
+      "id": "act_ml5nysxh_r8knar9du",
+      "name": "Excercise",
+      "type": "check",
+      "checks": {}
+    }
+  }
+}
