@@ -1,8 +1,10 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const goalEngine = require('./goalEngine');
 
 const DATA_FILE = path.join(__dirname, 'data.json');
+const GOALS_FILE = path.join(__dirname, 'goals.json');
 
 // ==========================================
 // Data Management
@@ -37,11 +39,47 @@ function saveData(data) {
 }
 
 /**
+ * Load goals from JSON file
+ * @returns {Object} Goals data
+ */
+function loadGoals() {
+  try {
+    if (fs.existsSync(GOALS_FILE)) {
+      const raw = fs.readFileSync(GOALS_FILE, 'utf-8');
+      return JSON.parse(raw);
+    }
+  } catch (err) {
+    console.error('Error loading goals:', err);
+  }
+  return { goals: {} };
+}
+
+/**
+ * Save goals to JSON file
+ * @param {Object} goalsData - Goals data to save
+ */
+function saveGoals(goalsData) {
+  try {
+    fs.writeFileSync(GOALS_FILE, JSON.stringify(goalsData, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving goals:', err);
+  }
+}
+
+/**
  * Generate unique activity ID
  * @returns {string} Unique ID
  */
 function generateId() {
   return 'act_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+/**
+ * Generate unique goal ID
+ * @returns {string} Unique ID
+ */
+function generateGoalId() {
+  return 'goal_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
 }
 
 // ==========================================
@@ -493,6 +531,7 @@ ipcMain.handle('create-activity', async (event, name, type) => {
     id,
     name,
     type,
+    createdAt: Date.now(),
     entries: type === 'time' ? [] : undefined,
     checks: type === 'check' ? {} : undefined
   };
@@ -621,6 +660,97 @@ ipcMain.handle('reset-activity', async (event, activityId) => {
   return { success: true, data };
 });
 
+// ==========================================
+// History Editing IPC Handlers
+// ==========================================
+
+// Edit a time entry
+ipcMain.handle('edit-time-entry', async (event, activityId, entryIndex, newStart, newEnd) => {
+  const data = loadData();
+  const activity = data.activities[activityId];
+  
+  if (!activity) {
+    return { success: false, error: 'Activity not found' };
+  }
+  
+  if (activity.type !== 'time') {
+    return { success: false, error: 'Not a time-based activity' };
+  }
+  
+  if (!activity.entries || entryIndex < 0 || entryIndex >= activity.entries.length) {
+    return { success: false, error: 'Entry not found' };
+  }
+  
+  activity.entries[entryIndex] = {
+    start: newStart,
+    end: newEnd
+  };
+  
+  saveData(data);
+  return { success: true, data };
+});
+
+// Delete a time entry
+ipcMain.handle('delete-time-entry', async (event, activityId, entryIndex) => {
+  const data = loadData();
+  const activity = data.activities[activityId];
+  
+  if (!activity) {
+    return { success: false, error: 'Activity not found' };
+  }
+  
+  if (activity.type !== 'time') {
+    return { success: false, error: 'Not a time-based activity' };
+  }
+  
+  if (!activity.entries || entryIndex < 0 || entryIndex >= activity.entries.length) {
+    return { success: false, error: 'Entry not found' };
+  }
+  
+  activity.entries.splice(entryIndex, 1);
+  
+  saveData(data);
+  return { success: true, data };
+});
+
+// Add a manual time entry
+ipcMain.handle('add-time-entry', async (event, activityId, start, end) => {
+  const data = loadData();
+  const activity = data.activities[activityId];
+  
+  if (!activity) {
+    return { success: false, error: 'Activity not found' };
+  }
+  
+  if (activity.type !== 'time') {
+    return { success: false, error: 'Not a time-based activity' };
+  }
+  
+  if (!activity.entries) {
+    activity.entries = [];
+  }
+  
+  activity.entries.push({ start, end });
+  
+  // Sort entries by start time
+  activity.entries.sort((a, b) => a.start - b.start);
+  
+  saveData(data);
+  return { success: true, data };
+});
+
+// Get detailed history for an activity
+ipcMain.handle('get-activity-history', async (event, activityId) => {
+  const data = loadData();
+  const activity = data.activities[activityId];
+  
+  if (!activity) {
+    return { success: false, error: 'Activity not found' };
+  }
+  
+  return { success: true, activity };
+});
+
 // Get daily progress
 ipcMain.handle('get-daily-progress', async (event, dateStr = null) => {
   const data = loadData();
@@ -647,6 +777,77 @@ ipcMain.handle('get-yearly-progress', async (event, dateStr = null) => {
   const data = loadData();
   const date = dateStr ? new Date(dateStr) : new Date();
   return getYearlyProgress(data, date);
+});
+
+// ==========================================
+// Goals IPC Handlers
+// ==========================================
+
+// Get all goals
+ipcMain.handle('goals:getAll', async () => {
+  return loadGoals();
+});
+
+// Create a new goal
+ipcMain.handle('goals:create', async (event, goalData) => {
+  const goalsData = loadGoals();
+  const id = generateGoalId();
+  
+  goalsData.goals[id] = {
+    id,
+    name: goalData.name,
+    type: goalData.type,
+    config: goalData.config,
+    createdAt: Date.now()
+  };
+  
+  saveGoals(goalsData);
+  return { success: true, id, goals: goalsData };
+});
+
+// Update an existing goal
+ipcMain.handle('goals:update', async (event, id, goalData) => {
+  const goalsData = loadGoals();
+  
+  if (!goalsData.goals[id]) {
+    return { success: false, error: 'Goal not found' };
+  }
+  
+  goalsData.goals[id] = {
+    ...goalsData.goals[id],
+    name: goalData.name,
+    type: goalData.type,
+    config: goalData.config
+  };
+  
+  saveGoals(goalsData);
+  return { success: true, goals: goalsData };
+});
+
+// Delete a goal
+ipcMain.handle('goals:delete', async (event, id) => {
+  const goalsData = loadGoals();
+  
+  if (!goalsData.goals[id]) {
+    return { success: false, error: 'Goal not found' };
+  }
+  
+  delete goalsData.goals[id];
+  saveGoals(goalsData);
+  return { success: true, goals: goalsData };
+});
+
+// Evaluate all goals
+ipcMain.handle('goals:evaluateAll', async () => {
+  const goalsData = loadGoals();
+  const activityData = loadData();
+  
+  const results = goalEngine.evaluateAllGoals(goalsData.goals, activityData.activities);
+  
+  return {
+    goals: goalsData.goals,
+    evaluations: results
+  };
 });
 
 // ==========================================

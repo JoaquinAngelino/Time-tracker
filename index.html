@@ -798,6 +798,506 @@
         min-height: 40px;
       }
     }
+
+    /* ==========================================
+       Goals Section Styles
+       ========================================== */
+    
+    .goals-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .goals-header h2 {
+      font-size: 1.5rem;
+      color: var(--accent);
+    }
+
+    .goals-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 25px;
+    }
+
+    .goal-card {
+      background: var(--bg-card);
+      border-radius: var(--border-radius);
+      padding: 16px 20px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .goal-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    .goal-card.achieved {
+      border-left: 4px solid var(--success);
+    }
+
+    .goal-card.in-progress {
+      border-left: 4px solid var(--warning);
+    }
+
+    .goal-card.not-started {
+      border-left: 4px solid var(--text-secondary);
+    }
+
+    .goal-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .goal-card-info {
+      flex: 1;
+    }
+
+    .goal-card-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .goal-type-badge {
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .goal-type-badge.time {
+      background: var(--time-color);
+      color: var(--bg-primary);
+    }
+
+    .goal-type-badge.count {
+      background: var(--check-color);
+      color: var(--bg-primary);
+    }
+
+    .goal-type-badge.streak {
+      background: var(--warning);
+      color: var(--bg-primary);
+    }
+
+    .goal-card-description {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .goal-card-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .goal-progress-container {
+      margin-top: 10px;
+    }
+
+    .goal-progress-bar {
+      height: 8px;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+
+    .goal-progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .goal-progress-fill.achieved {
+      background: var(--success);
+    }
+
+    .goal-progress-fill.in-progress {
+      background: var(--warning);
+    }
+
+    .goal-progress-fill.low {
+      background: var(--accent);
+    }
+
+    .goal-progress-text {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .goal-progress-text .current {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .goal-progress-text .target {
+      color: var(--text-secondary);
+    }
+
+    /* Goal Form */
+    .goal-form-container {
+      background: var(--bg-secondary);
+      border-radius: var(--border-radius);
+      padding: 20px;
+      margin-bottom: 25px;
+      display: none;
+    }
+
+    .goal-form-container.active {
+      display: block;
+    }
+
+    .goal-form-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: var(--accent);
+    }
+
+    .goal-form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group select {
+      padding: 12px 16px;
+      border: none;
+      border-radius: var(--border-radius);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 1rem;
+      outline: none;
+      transition: box-shadow 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 10px;
+    }
+
+    .goal-config-fields {
+      display: none;
+    }
+
+    .goal-config-fields.active {
+      display: block;
+    }
+
+    /* Goal Period Badge */
+    .goal-period-badge {
+      font-size: 0.7rem;
+      padding: 2px 6px;
+      border-radius: 8px;
+      background: var(--bg-hover);
+      color: var(--text-secondary);
+      margin-left: 5px;
+    }
+
+    /* Goals Empty State */
+    .goals-empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-secondary);
+    }
+
+    .goals-empty-state h3 {
+      margin-bottom: 10px;
+      font-size: 1.2rem;
+    }
+
+    .goals-empty-state p {
+      margin-bottom: 15px;
+    }
+
+    /* Goal Status Icon */
+    .goal-status-icon {
+      font-size: 1.2rem;
+      margin-right: 5px;
+    }
+
+    /* ==========================================
+       History Edit Styles
+       ========================================== */
+    
+    /* Modal Overlay */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--bg-secondary);
+      border-radius: var(--border-radius);
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px;
+      border-bottom: 1px solid var(--bg-card);
+    }
+
+    .modal-header h3 {
+      font-size: 1.2rem;
+      color: var(--accent);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .modal-close:hover {
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 15px 20px;
+      border-top: 1px solid var(--bg-card);
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    /* History List */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .history-entry {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 15px;
+      background: var(--bg-card);
+      border-radius: var(--border-radius);
+      gap: 10px;
+    }
+
+    .history-entry-info {
+      flex: 1;
+    }
+
+    .history-entry-date {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .history-entry-time {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .history-entry-time span {
+      font-weight: 600;
+    }
+
+    .history-entry-duration {
+      font-weight: 700;
+      color: var(--time-color);
+    }
+
+    .history-entry-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* Editable daily item */
+    .daily-item.editable {
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .daily-item.editable:hover {
+      background: var(--bg-hover);
+    }
+
+    .daily-item-edit-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 4px 8px;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+
+    .daily-item-edit-btn:hover {
+      color: var(--accent);
+    }
+
+    /* Edit Entry Form */
+    .edit-entry-form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .edit-entry-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .edit-entry-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .edit-entry-group label {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .edit-entry-group input {
+      padding: 10px 12px;
+      background: var(--bg-primary);
+      border: none;
+      border-radius: var(--border-radius);
+      color: var(--text-primary);
+      font-size: 0.95rem;
+    }
+
+    .edit-entry-group input:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+
+    /* Add Entry Button */
+    .add-entry-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px;
+      background: transparent;
+      border: 2px dashed var(--bg-hover);
+      border-radius: var(--border-radius);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+      font-size: 0.9rem;
+    }
+
+    .add-entry-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Check history toggle */
+    .check-history-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 15px;
+      background: var(--bg-card);
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .check-history-toggle:hover {
+      background: var(--bg-hover);
+    }
+
+    .check-history-date {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .check-history-status {
+      font-weight: 600;
+    }
+
+    .check-history-status.checked {
+      color: var(--check-color);
+    }
+
+    .check-history-status.unchecked {
+      color: var(--text-secondary);
+    }
+
+    /* Activity created info */
+    .activity-created {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -806,6 +1306,7 @@
     <nav class="nav-tabs">
       <button class="nav-tab active" data-tab="activities">📋 Activities</button>
       <button class="nav-tab" data-tab="progress">📊 Progress</button>
+      <button class="nav-tab" data-tab="goals">🎯 Goals</button>
     </nav>
 
     <main class="main-content">
@@ -855,7 +1356,155 @@
           <!-- Progress views rendered here -->
         </div>
       </div>
+
+      <!-- Goals Tab -->
+      <div id="goals-tab" class="tab-content">
+        <div class="goals-header">
+          <h2>🎯 Goals</h2>
+          <button class="btn btn-primary" id="new-goal-btn">
+            ➕ New Goal
+          </button>
+        </div>
+
+        <!-- Goal Create/Edit Form -->
+        <div class="goal-form-container" id="goal-form-container">
+          <h3 class="goal-form-title" id="goal-form-title">Create New Goal</h3>
+          <form class="goal-form" id="goal-form">
+            <input type="hidden" id="goal-edit-id">
+            
+            <div class="form-group">
+              <label for="goal-name">Goal Name</label>
+              <input type="text" id="goal-name" placeholder="e.g., Study 2 hours daily" maxlength="100" required>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="goal-type">Goal Type</label>
+                <select id="goal-type" required>
+                  <option value="">Select type...</option>
+                  <option value="time">⏱️ Time Goal</option>
+                  <option value="count">✅ Count Goal</option>
+                  <option value="streak">🔥 Streak Goal</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="goal-activity">Activity</label>
+                <select id="goal-activity" required>
+                  <option value="">Select activity...</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Time Goal Config -->
+            <div class="goal-config-fields" id="time-config">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="goal-time-minutes">Target Minutes</label>
+                  <input type="number" id="goal-time-minutes" min="1" placeholder="e.g., 120">
+                </div>
+                <div class="form-group">
+                  <label for="goal-time-period">Period</label>
+                  <select id="goal-time-period">
+                    <option value="day">Daily</option>
+                    <option value="week">Weekly</option>
+                    <option value="month">Monthly</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Count Goal Config -->
+            <div class="goal-config-fields" id="count-config">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="goal-count-target">Target Completions</label>
+                  <input type="number" id="goal-count-target" min="1" placeholder="e.g., 5">
+                </div>
+                <div class="form-group">
+                  <label for="goal-count-period">Period</label>
+                  <select id="goal-count-period">
+                    <option value="day">Daily</option>
+                    <option value="week">Weekly</option>
+                    <option value="month">Monthly</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Streak Goal Config -->
+            <div class="goal-config-fields" id="streak-config">
+              <div class="form-group">
+                <label for="goal-streak-days">Target Streak Days</label>
+                <input type="number" id="goal-streak-days" min="1" placeholder="e.g., 7">
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-danger" id="cancel-goal-btn">Cancel</button>
+              <button type="submit" class="btn btn-success" id="save-goal-btn">Save Goal</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Goals List -->
+        <div class="goals-list" id="goals-list">
+          <!-- Goals rendered here -->
+        </div>
+      </div>
     </main>
+
+    <!-- History Edit Modal -->
+    <div class="modal-overlay" id="history-modal">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="history-modal-title">Edit History</h3>
+          <button class="modal-close" id="close-history-modal">&times;</button>
+        </div>
+        <div class="modal-body" id="history-modal-body">
+          <!-- History entries rendered here -->
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-danger" id="close-history-btn">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Entry Edit Modal -->
+    <div class="modal-overlay" id="entry-edit-modal">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="entry-edit-title">Edit Entry</h3>
+          <button class="modal-close" id="close-entry-edit-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form class="edit-entry-form" id="entry-edit-form">
+            <input type="hidden" id="edit-activity-id">
+            <input type="hidden" id="edit-entry-index">
+            <div class="edit-entry-row">
+              <div class="edit-entry-group">
+                <label for="edit-entry-date">Date</label>
+                <input type="date" id="edit-entry-date" required>
+              </div>
+            </div>
+            <div class="edit-entry-row">
+              <div class="edit-entry-group">
+                <label for="edit-entry-start">Start Time</label>
+                <input type="time" id="edit-entry-start" required>
+              </div>
+              <div class="edit-entry-group">
+                <label for="edit-entry-end">End Time</label>
+                <input type="time" id="edit-entry-end" required>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-danger" id="cancel-entry-edit">Cancel</button>
+          <button class="btn btn-success" id="save-entry-edit">Save</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="ui.js"></script>

@@ -39,5 +39,36 @@ contextBridge.exposeInMainWorld('tracker', {
       default:
         return ipcRenderer.invoke('get-daily-progress', dateStr);
     }
-  }
+  },
+  
+  // History editing
+  editTimeEntry: (activityId, entryIndex, newStart, newEnd) => 
+    ipcRenderer.invoke('edit-time-entry', activityId, entryIndex, newStart, newEnd),
+  
+  deleteTimeEntry: (activityId, entryIndex) => 
+    ipcRenderer.invoke('delete-time-entry', activityId, entryIndex),
+  
+  addTimeEntry: (activityId, start, end) => 
+    ipcRenderer.invoke('add-time-entry', activityId, start, end),
+  
+  getActivityHistory: (activityId) => 
+    ipcRenderer.invoke('get-activity-history', activityId)
+});
+
+// Goals API
+contextBridge.exposeInMainWorld('goals', {
+  // Get all goals
+  getAll: () => ipcRenderer.invoke('goals:getAll'),
+  
+  // Create a new goal
+  create: (goalData) => ipcRenderer.invoke('goals:create', goalData),
+  
+  // Update an existing goal
+  update: (id, goalData) => ipcRenderer.invoke('goals:update', id, goalData),
+  
+  // Delete a goal
+  delete: (id) => ipcRenderer.invoke('goals:delete', id),
+  
+  // Evaluate all goals with current activity data
+  evaluate: () => ipcRenderer.invoke('goals:evaluateAll')
 });

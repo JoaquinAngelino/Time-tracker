@@ -3,9 +3,11 @@
 // ==========================================
 
 let appData = { activities: {} };
+let goalsData = { goals: {}, evaluations: {} };
 let liveTimers = {};
 let currentPeriod = 'day';
 let currentDate = new Date();
+let editingGoalId = null;
 
 // ==========================================
 // DOM Elements
@@ -27,6 +29,43 @@ const progressContent = document.getElementById('progress-content');
 const currentPeriodLabel = document.getElementById('current-period-label');
 const prevPeriodBtn = document.getElementById('prev-period');
 const nextPeriodBtn = document.getElementById('next-period');
+
+// Goals
+const goalsList = document.getElementById('goals-list');
+const newGoalBtn = document.getElementById('new-goal-btn');
+const goalFormContainer = document.getElementById('goal-form-container');
+const goalForm = document.getElementById('goal-form');
+const goalFormTitle = document.getElementById('goal-form-title');
+const goalEditId = document.getElementById('goal-edit-id');
+const goalNameInput = document.getElementById('goal-name');
+const goalTypeSelect = document.getElementById('goal-type');
+const goalActivitySelect = document.getElementById('goal-activity');
+const cancelGoalBtn = document.getElementById('cancel-goal-btn');
+
+// Goal Config Fields
+const timeConfigFields = document.getElementById('time-config');
+const countConfigFields = document.getElementById('count-config');
+const streakConfigFields = document.getElementById('streak-config');
+
+// History Edit Modal
+const historyModal = document.getElementById('history-modal');
+const historyModalTitle = document.getElementById('history-modal-title');
+const historyModalBody = document.getElementById('history-modal-body');
+const closeHistoryModalBtn = document.getElementById('close-history-modal');
+const closeHistoryBtn = document.getElementById('close-history-btn');
+
+// Entry Edit Modal
+const entryEditModal = document.getElementById('entry-edit-modal');
+const entryEditTitle = document.getElementById('entry-edit-title');
+const entryEditForm = document.getElementById('entry-edit-form');
+const editActivityId = document.getElementById('edit-activity-id');
+const editEntryIndex = document.getElementById('edit-entry-index');
+const editEntryDate = document.getElementById('edit-entry-date');
+const editEntryStart = document.getElementById('edit-entry-start');
+const editEntryEnd = document.getElementById('edit-entry-end');
+const closeEntryEditModalBtn = document.getElementById('close-entry-edit-modal');
+const cancelEntryEditBtn = document.getElementById('cancel-entry-edit');
+const saveEntryEditBtn = document.getElementById('save-entry-edit');
 
 // ==========================================
 // Utility Functions
@@ -154,6 +193,11 @@ function createActivityElement(activityId) {
   const type = activity.type;
   const running = isActivityRunning(activity);
   const todayStr = getISODate();
+  const createdAt = activity.createdAt ? new Date(activity.createdAt).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  }) : null;
 
   const card = document.createElement('div');
   card.className = `activity-card ${type}-type${running ? ' running' : ''}`;
@@ -173,6 +217,7 @@ function createActivityElement(activityId) {
         <div class="activity-time${running ? ' running' : ''}" data-time-display="${activityId}">
           ${running ? formatTimeLive(totalMs) : formatTime(totalMs)}
         </div>
+        ${createdAt ? `<div class="activity-created">Created ${createdAt}</div>` : ''}
       </div>
       <div class="activity-actions">
         ${running 
@@ -193,6 +238,7 @@ function createActivityElement(activityId) {
           </div>
           <span class="type-badge check">Check</span>
         </div>
+        ${createdAt ? `<div class="activity-created">Created ${createdAt}</div>` : ''}
       </div>
       <div class="check-toggle">
         <button class="check-btn${isCheckedToday ? ' checked' : ''}" data-action="toggle-check" data-id="${activityId}">
@@ -403,23 +449,25 @@ function renderDailyProgress(data) {
   activities.forEach(act => {
     if (act.type === 'time') {
       html += `
-        <div class="daily-item">
+        <div class="daily-item editable" data-activity-id="${act.id}">
           <div class="daily-item-info">
             <span class="type-badge time">Time</span>
             <span class="daily-item-name">${escapeHtml(act.name)}</span>
             ${act.running ? '<span class="status-indicator running"></span>' : ''}
           </div>
           <span class="daily-item-value time">${formatTime(act.time)}</span>
+          <button class="daily-item-edit-btn" data-action="open-history" data-id="${act.id}" title="Edit History">📝</button>
         </div>
       `;
     } else {
       html += `
-        <div class="daily-item">
+        <div class="daily-item editable" data-activity-id="${act.id}">
           <div class="daily-item-info">
             <span class="type-badge check">Check</span>
             <span class="daily-item-name">${escapeHtml(act.name)}</span>
           </div>
           <span class="daily-item-value ${act.checked ? 'checked' : 'unchecked'}">${act.checked ? '✓ Done' : '○ Not done'}</span>
+          <button class="daily-item-edit-btn" data-action="open-history" data-id="${act.id}" title="Edit History">📝</button>
         </div>
       `;
     }
@@ -939,6 +987,702 @@ async function resetActivity(activityId) {
 }
 
 // ==========================================
+// History Editing Functions
+// ==========================================
+
+let currentHistoryActivityId = null;
+let isAddingNewEntry = false;
+
+/**
+ * Format date for display
+ * @param {number} timestamp - Unix timestamp
+ * @returns {string} Formatted date string
+ */
+function formatDate(timestamp) {
+  const date = new Date(timestamp);
+  return date.toLocaleDateString('en-US', { 
+    weekday: 'short', 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric' 
+  });
+}
+
+/**
+ * Format time for display
+ * @param {number} timestamp - Unix timestamp
+ * @returns {string} Formatted time string
+ */
+function formatTimeOfDay(timestamp) {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: false
+  });
+}
+
+/**
+ * Open history modal for an activity
+ * @param {string} activityId - Activity ID
+ */
+async function openHistoryModal(activityId) {
+  currentHistoryActivityId = activityId;
+  const activity = appData.activities[activityId];
+  
+  if (!activity) return;
+  
+  historyModalTitle.textContent = `History: ${activity.name}`;
+  
+  if (activity.type === 'time') {
+    renderTimeHistory(activity);
+  } else {
+    renderCheckHistory(activity);
+  }
+  
+  historyModal.classList.add('active');
+}
+
+/**
+ * Close history modal
+ */
+function closeHistoryModal() {
+  historyModal.classList.remove('active');
+  currentHistoryActivityId = null;
+}
+
+/**
+ * Render time activity history
+ * @param {Object} activity - Activity object
+ */
+function renderTimeHistory(activity) {
+  const entries = activity.entries || [];
+  
+  if (entries.length === 0) {
+    historyModalBody.innerHTML = `
+      <div class="empty-state">
+        <h3>No history yet</h3>
+        <p>Start tracking to see your history here</p>
+      </div>
+      <button class="add-entry-btn" data-action="add-entry">
+        ➕ Add Manual Entry
+      </button>
+    `;
+    return;
+  }
+  
+  // Group entries by date
+  const entriesByDate = {};
+  entries.forEach((entry, index) => {
+    const dateStr = getISODate(new Date(entry.start));
+    if (!entriesByDate[dateStr]) {
+      entriesByDate[dateStr] = [];
+    }
+    entriesByDate[dateStr].push({ ...entry, index });
+  });
+  
+  // Sort dates descending (most recent first)
+  const sortedDates = Object.keys(entriesByDate).sort().reverse();
+  
+  let html = '<div class="history-list">';
+  
+  sortedDates.forEach(dateStr => {
+    const dayEntries = entriesByDate[dateStr];
+    const totalMs = dayEntries.reduce((sum, e) => sum + ((e.end || Date.now()) - e.start), 0);
+    
+    html += `<div class="history-date-group">`;
+    html += `<div class="history-date-header" style="font-weight: 600; margin: 15px 0 10px; color: var(--text-secondary);">
+      ${formatDate(new Date(dateStr))} — Total: ${formatTime(totalMs)}
+    </div>`;
+    
+    dayEntries.forEach(entry => {
+      const duration = (entry.end || Date.now()) - entry.start;
+      const isRunning = entry.end === null;
+      
+      html += `
+        <div class="history-entry${isRunning ? ' running' : ''}">
+          <div class="history-entry-info">
+            <div class="history-entry-time">
+              <span>${formatTimeOfDay(entry.start)}</span>
+              <span>→</span>
+              <span>${isRunning ? 'Running...' : formatTimeOfDay(entry.end)}</span>
+            </div>
+          </div>
+          <span class="history-entry-duration">${formatTime(duration)}</span>
+          <div class="history-entry-actions">
+            ${!isRunning ? `
+              <button class="btn btn-small" data-action="edit-entry" data-index="${entry.index}" title="Edit">✏️</button>
+              <button class="btn btn-danger btn-small" data-action="delete-entry" data-index="${entry.index}" title="Delete">🗑️</button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    });
+    
+    html += `</div>`;
+  });
+  
+  html += '</div>';
+  html += `
+    <button class="add-entry-btn" data-action="add-entry" style="margin-top: 15px;">
+      ➕ Add Manual Entry
+    </button>
+  `;
+  
+  historyModalBody.innerHTML = html;
+}
+
+/**
+ * Render check activity history
+ * @param {Object} activity - Activity object
+ */
+function renderCheckHistory(activity) {
+  const checks = activity.checks || {};
+  const checkDates = Object.keys(checks).sort().reverse();
+  
+  // Get last 30 days
+  const days = [];
+  const today = new Date();
+  for (let i = 0; i < 30; i++) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    days.push(getISODate(date));
+  }
+  
+  let html = '<div class="history-list">';
+  
+  days.forEach(dateStr => {
+    const isChecked = checks[dateStr] === true;
+    html += `
+      <div class="check-history-toggle" data-action="toggle-check-history" data-date="${dateStr}">
+        <span class="check-history-date">${formatDate(new Date(dateStr))}</span>
+        <span class="check-history-status ${isChecked ? 'checked' : 'unchecked'}">
+          ${isChecked ? '✓ Completed' : '○ Not done'}
+        </span>
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  historyModalBody.innerHTML = html;
+}
+
+/**
+ * Open entry edit modal
+ * @param {number} entryIndex - Entry index (-1 for new entry)
+ */
+function openEntryEditModal(entryIndex) {
+  const activity = appData.activities[currentHistoryActivityId];
+  if (!activity) return;
+  
+  isAddingNewEntry = entryIndex === -1;
+  entryEditTitle.textContent = isAddingNewEntry ? 'Add New Entry' : 'Edit Entry';
+  
+  editActivityId.value = currentHistoryActivityId;
+  editEntryIndex.value = entryIndex;
+  
+  if (isAddingNewEntry) {
+    // Default to today
+    const today = new Date();
+    editEntryDate.value = getISODate(today);
+    editEntryStart.value = '09:00';
+    editEntryEnd.value = '10:00';
+  } else {
+    const entry = activity.entries[entryIndex];
+    const startDate = new Date(entry.start);
+    const endDate = new Date(entry.end);
+    
+    editEntryDate.value = getISODate(startDate);
+    editEntryStart.value = formatTimeOfDay(entry.start);
+    editEntryEnd.value = formatTimeOfDay(entry.end);
+  }
+  
+  entryEditModal.classList.add('active');
+}
+
+/**
+ * Close entry edit modal
+ */
+function closeEntryEditModal() {
+  entryEditModal.classList.remove('active');
+  isAddingNewEntry = false;
+}
+
+/**
+ * Save entry edit
+ */
+async function saveEntryEdit() {
+  const activityId = editActivityId.value;
+  const entryIndex = parseInt(editEntryIndex.value);
+  const dateStr = editEntryDate.value;
+  const startTime = editEntryStart.value;
+  const endTime = editEntryEnd.value;
+  
+  // Parse date and times
+  const [startHours, startMinutes] = startTime.split(':').map(Number);
+  const [endHours, endMinutes] = endTime.split(':').map(Number);
+  
+  const startDate = new Date(dateStr);
+  startDate.setHours(startHours, startMinutes, 0, 0);
+  
+  const endDate = new Date(dateStr);
+  endDate.setHours(endHours, endMinutes, 0, 0);
+  
+  // Handle overnight entries
+  if (endDate <= startDate) {
+    endDate.setDate(endDate.getDate() + 1);
+  }
+  
+  const newStart = startDate.getTime();
+  const newEnd = endDate.getTime();
+  
+  try {
+    let result;
+    if (isAddingNewEntry) {
+      result = await window.tracker.addTimeEntry(activityId, newStart, newEnd);
+    } else {
+      result = await window.tracker.editTimeEntry(activityId, entryIndex, newStart, newEnd);
+    }
+    
+    if (result.success) {
+      appData = result.data;
+      closeEntryEditModal();
+      openHistoryModal(activityId); // Refresh history view
+      loadProgress(); // Refresh progress view
+    } else {
+      alert(result.error || 'Failed to save entry');
+    }
+  } catch (err) {
+    console.error('Error saving entry:', err);
+    alert('An error occurred while saving the entry');
+  }
+}
+
+/**
+ * Delete time entry
+ * @param {number} entryIndex - Entry index
+ */
+async function deleteTimeEntry(entryIndex) {
+  if (!confirm('Are you sure you want to delete this entry?')) return;
+  
+  try {
+    const result = await window.tracker.deleteTimeEntry(currentHistoryActivityId, entryIndex);
+    if (result.success) {
+      appData = result.data;
+      openHistoryModal(currentHistoryActivityId); // Refresh history view
+      loadProgress(); // Refresh progress view
+    }
+  } catch (err) {
+    console.error('Error deleting entry:', err);
+  }
+}
+
+/**
+ * Toggle check for a specific date in history
+ * @param {string} dateStr - ISO date string
+ */
+async function toggleCheckHistory(dateStr) {
+  try {
+    const result = await window.tracker.toggleCheck(currentHistoryActivityId, dateStr);
+    if (result.success) {
+      appData = result.data;
+      openHistoryModal(currentHistoryActivityId); // Refresh history view
+      loadProgress(); // Refresh progress view
+    }
+  } catch (err) {
+    console.error('Error toggling check:', err);
+  }
+}
+
+// ==========================================
+// Goals Functions
+// ==========================================
+
+/**
+ * Load goals data
+ */
+async function loadGoals() {
+  try {
+    const result = await window.goals.evaluate();
+    goalsData = result;
+    renderGoals();
+  } catch (err) {
+    console.error('Error loading goals:', err);
+  }
+}
+
+/**
+ * Populate activity select dropdown for goals
+ */
+function populateActivitySelect() {
+  goalActivitySelect.innerHTML = '<option value="">Select activity...</option>';
+  
+  Object.keys(appData.activities).forEach(activityId => {
+    const activity = appData.activities[activityId];
+    const option = document.createElement('option');
+    option.value = activityId;
+    option.textContent = `${activity.type === 'time' ? '⏱️' : '✅'} ${activity.name}`;
+    option.dataset.activityType = activity.type;
+    goalActivitySelect.appendChild(option);
+  });
+}
+
+/**
+ * Show/hide goal config fields based on type
+ * @param {string} goalType - Goal type
+ */
+function showGoalConfigFields(goalType) {
+  timeConfigFields.classList.remove('active');
+  countConfigFields.classList.remove('active');
+  streakConfigFields.classList.remove('active');
+  
+  switch (goalType) {
+    case 'time':
+      timeConfigFields.classList.add('active');
+      break;
+    case 'count':
+      countConfigFields.classList.add('active');
+      break;
+    case 'streak':
+      streakConfigFields.classList.add('active');
+      break;
+  }
+}
+
+/**
+ * Filter activities based on goal type selection
+ * @param {string} goalType - Selected goal type
+ */
+function filterActivitiesByGoalType(goalType) {
+  const options = goalActivitySelect.querySelectorAll('option');
+  options.forEach(option => {
+    if (option.value === '') {
+      option.style.display = '';
+      return;
+    }
+    
+    const activityType = option.dataset.activityType;
+    
+    // Time goals need time activities
+    // Count and streak goals need check activities
+    if (goalType === 'time') {
+      option.style.display = activityType === 'time' ? '' : 'none';
+    } else if (goalType === 'count' || goalType === 'streak') {
+      option.style.display = activityType === 'check' ? '' : 'none';
+    } else {
+      option.style.display = '';
+    }
+  });
+  
+  // Reset selection
+  goalActivitySelect.value = '';
+}
+
+/**
+ * Open goal form for creating or editing
+ * @param {string|null} goalId - Goal ID for editing, null for new
+ */
+function openGoalForm(goalId = null) {
+  editingGoalId = goalId;
+  populateActivitySelect();
+  
+  if (goalId && goalsData.goals[goalId]) {
+    const goal = goalsData.goals[goalId];
+    goalFormTitle.textContent = 'Edit Goal';
+    goalEditId.value = goalId;
+    goalNameInput.value = goal.name;
+    goalTypeSelect.value = goal.type;
+    
+    showGoalConfigFields(goal.type);
+    filterActivitiesByGoalType(goal.type);
+    
+    // Set activity
+    goalActivitySelect.value = goal.config.activityId || '';
+    
+    // Set config values based on type
+    if (goal.type === 'time') {
+      document.getElementById('goal-time-minutes').value = goal.config.targetMinutes || '';
+      document.getElementById('goal-time-period').value = goal.config.period || 'day';
+    } else if (goal.type === 'count') {
+      document.getElementById('goal-count-target').value = goal.config.targetCount || '';
+      document.getElementById('goal-count-period').value = goal.config.period || 'day';
+    } else if (goal.type === 'streak') {
+      document.getElementById('goal-streak-days').value = goal.config.targetDays || '';
+    }
+  } else {
+    goalFormTitle.textContent = 'Create New Goal';
+    goalEditId.value = '';
+    goalForm.reset();
+    showGoalConfigFields('');
+  }
+  
+  goalFormContainer.classList.add('active');
+}
+
+/**
+ * Close goal form
+ */
+function closeGoalForm() {
+  goalFormContainer.classList.remove('active');
+  goalForm.reset();
+  editingGoalId = null;
+  showGoalConfigFields('');
+}
+
+/**
+ * Save goal (create or update)
+ */
+async function saveGoal() {
+  const name = goalNameInput.value.trim();
+  const type = goalTypeSelect.value;
+  const activityId = goalActivitySelect.value;
+  
+  if (!name || !type || !activityId) {
+    alert('Please fill in all required fields.');
+    return;
+  }
+  
+  const config = { activityId };
+  
+  if (type === 'time') {
+    const targetMinutes = parseInt(document.getElementById('goal-time-minutes').value);
+    const period = document.getElementById('goal-time-period').value;
+    if (!targetMinutes || targetMinutes < 1) {
+      alert('Please enter a valid target minutes value.');
+      return;
+    }
+    config.targetMinutes = targetMinutes;
+    config.period = period;
+  } else if (type === 'count') {
+    const targetCount = parseInt(document.getElementById('goal-count-target').value);
+    const period = document.getElementById('goal-count-period').value;
+    if (!targetCount || targetCount < 1) {
+      alert('Please enter a valid target count value.');
+      return;
+    }
+    config.targetCount = targetCount;
+    config.period = period;
+  } else if (type === 'streak') {
+    const targetDays = parseInt(document.getElementById('goal-streak-days').value);
+    if (!targetDays || targetDays < 1) {
+      alert('Please enter a valid target days value.');
+      return;
+    }
+    config.targetDays = targetDays;
+  }
+  
+  const goalData = { name, type, config };
+  
+  try {
+    let result;
+    if (editingGoalId) {
+      result = await window.goals.update(editingGoalId, goalData);
+    } else {
+      result = await window.goals.create(goalData);
+    }
+    
+    if (result.success) {
+      closeGoalForm();
+      await loadGoals();
+    } else {
+      alert(result.error || 'Failed to save goal.');
+    }
+  } catch (err) {
+    console.error('Error saving goal:', err);
+    alert('An error occurred while saving the goal.');
+  }
+}
+
+/**
+ * Delete goal
+ * @param {string} goalId - Goal ID
+ */
+async function deleteGoal(goalId) {
+  if (!confirm('Are you sure you want to delete this goal?')) return;
+  
+  try {
+    const result = await window.goals.delete(goalId);
+    if (result.success) {
+      await loadGoals();
+    }
+  } catch (err) {
+    console.error('Error deleting goal:', err);
+  }
+}
+
+/**
+ * Get goal progress percentage
+ * @param {Object} evaluation - Goal evaluation result
+ * @returns {number} Progress percentage (0-100)
+ */
+function getGoalProgress(evaluation) {
+  if (!evaluation) return 0;
+  const progress = (evaluation.current / evaluation.target) * 100;
+  return Math.min(100, Math.max(0, progress));
+}
+
+/**
+ * Get goal progress class
+ * @param {number} percentage - Progress percentage
+ * @returns {string} CSS class
+ */
+function getGoalProgressClass(percentage) {
+  if (percentage >= 100) return 'achieved';
+  if (percentage >= 50) return 'in-progress';
+  return 'low';
+}
+
+/**
+ * Format goal current value for display
+ * @param {Object} goal - Goal object
+ * @param {Object} evaluation - Evaluation result
+ * @returns {string} Formatted value
+ */
+function formatGoalCurrent(goal, evaluation) {
+  if (!evaluation) return '0';
+  
+  if (goal.type === 'time') {
+    return formatTime(evaluation.current * 60000); // Convert minutes to ms
+  }
+  return evaluation.current.toString();
+}
+
+/**
+ * Format goal target value for display
+ * @param {Object} goal - Goal object
+ * @returns {string} Formatted value
+ */
+function formatGoalTarget(goal) {
+  if (goal.type === 'time') {
+    return formatTime(goal.config.targetMinutes * 60000);
+  } else if (goal.type === 'count') {
+    return `${goal.config.targetCount} completions`;
+  } else if (goal.type === 'streak') {
+    return `${goal.config.targetDays} days`;
+  }
+  return '';
+}
+
+/**
+ * Get goal description text
+ * @param {Object} goal - Goal object
+ * @returns {string} Description text
+ */
+function getGoalDescription(goal) {
+  const activity = appData.activities[goal.config.activityId];
+  const activityName = activity ? activity.name : 'Unknown Activity';
+  
+  if (goal.type === 'time') {
+    const period = goal.config.period;
+    return `Track ${formatTime(goal.config.targetMinutes * 60000)} of "${activityName}" ${period === 'day' ? 'daily' : period === 'week' ? 'weekly' : 'monthly'}`;
+  } else if (goal.type === 'count') {
+    const period = goal.config.period;
+    return `Complete "${activityName}" ${goal.config.targetCount} times ${period === 'day' ? 'daily' : period === 'week' ? 'weekly' : 'monthly'}`;
+  } else if (goal.type === 'streak') {
+    return `Maintain a ${goal.config.targetDays}-day streak for "${activityName}"`;
+  }
+  return '';
+}
+
+/**
+ * Get period badge text
+ * @param {Object} goal - Goal object
+ * @returns {string} Period text
+ */
+function getPeriodBadge(goal) {
+  if (goal.type === 'streak') return '';
+  const period = goal.config.period;
+  return period === 'day' ? 'Daily' : period === 'week' ? 'Weekly' : 'Monthly';
+}
+
+/**
+ * Create goal card element
+ * @param {string} goalId - Goal ID
+ * @returns {HTMLElement} Goal card element
+ */
+function createGoalElement(goalId) {
+  const goal = goalsData.goals[goalId];
+  const evaluation = goalsData.evaluations[goalId];
+  const progress = getGoalProgress(evaluation);
+  const progressClass = getGoalProgressClass(progress);
+  const isAchieved = progress >= 100;
+  
+  const card = document.createElement('div');
+  card.className = `goal-card ${isAchieved ? 'achieved' : progress >= 50 ? 'in-progress' : 'not-started'}`;
+  card.dataset.goalId = goalId;
+  
+  const periodBadge = getPeriodBadge(goal);
+  
+  card.innerHTML = `
+    <div class="goal-card-header">
+      <div class="goal-card-info">
+        <div class="goal-card-name">
+          <span class="goal-status-icon">${isAchieved ? '✅' : progress >= 50 ? '🔄' : '⭕'}</span>
+          ${escapeHtml(goal.name)}
+          <span class="goal-type-badge ${goal.type}">${goal.type === 'time' ? 'Time' : goal.type === 'count' ? 'Count' : 'Streak'}</span>
+          ${periodBadge ? `<span class="goal-period-badge">${periodBadge}</span>` : ''}
+        </div>
+        <div class="goal-card-description">${getGoalDescription(goal)}</div>
+      </div>
+      <div class="goal-card-actions">
+        <button class="btn btn-small" data-action="edit-goal" data-id="${goalId}" title="Edit">✏️</button>
+        <button class="btn btn-danger btn-small" data-action="delete-goal" data-id="${goalId}" title="Delete">🗑️</button>
+      </div>
+    </div>
+    <div class="goal-progress-container">
+      <div class="goal-progress-bar">
+        <div class="goal-progress-fill ${progressClass}" style="width: ${progress}%"></div>
+      </div>
+      <div class="goal-progress-text">
+        <span class="current">${formatGoalCurrent(goal, evaluation)}</span>
+        <span class="target">/ ${formatGoalTarget(goal)}</span>
+      </div>
+    </div>
+  `;
+  
+  return card;
+}
+
+/**
+ * Render all goals
+ */
+function renderGoals() {
+  goalsList.innerHTML = '';
+  
+  const goalIds = Object.keys(goalsData.goals || {});
+  
+  if (goalIds.length === 0) {
+    goalsList.innerHTML = `
+      <div class="goals-empty-state">
+        <h3>No goals yet</h3>
+        <p>Create your first goal to start tracking your progress</p>
+      </div>
+    `;
+    return;
+  }
+  
+  // Sort goals: achieved last, then by type
+  goalIds.sort((a, b) => {
+    const evalA = goalsData.evaluations[a];
+    const evalB = goalsData.evaluations[b];
+    const progressA = getGoalProgress(evalA);
+    const progressB = getGoalProgress(evalB);
+    
+    // Achieved goals at the end
+    if (progressA >= 100 && progressB < 100) return 1;
+    if (progressB >= 100 && progressA < 100) return -1;
+    
+    // Then sort by progress (highest first)
+    return progressB - progressA;
+  });
+  
+  goalIds.forEach(id => {
+    const element = createGoalElement(id);
+    goalsList.appendChild(element);
+  });
+}
+
+// ==========================================
 // Event Listeners
 // ==========================================
 
@@ -1009,6 +1753,8 @@ navTabs.forEach(tab => {
     if (targetTab === 'progress') {
       currentDate = new Date();
       loadProgress();
+    } else if (targetTab === 'goals') {
+      loadGoals();
     }
   });
 });
@@ -1030,6 +1776,123 @@ periodButtons.forEach(btn => {
 // Period navigation
 prevPeriodBtn.addEventListener('click', () => navigatePeriod(-1));
 nextPeriodBtn.addEventListener('click', () => navigatePeriod(1));
+
+// ==========================================
+// Goals Event Listeners
+// ==========================================
+
+// New goal button
+newGoalBtn.addEventListener('click', () => openGoalForm());
+
+// Cancel goal button
+cancelGoalBtn.addEventListener('click', closeGoalForm);
+
+// Goal form submission
+goalForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  saveGoal();
+});
+
+// Goal type change - show/hide config fields and filter activities
+goalTypeSelect.addEventListener('change', (e) => {
+  const goalType = e.target.value;
+  showGoalConfigFields(goalType);
+  filterActivitiesByGoalType(goalType);
+});
+
+// Goals list actions (event delegation)
+goalsList.addEventListener('click', (e) => {
+  const target = e.target;
+  const action = target.dataset.action;
+  const goalId = target.dataset.id;
+  
+  if (!action || !goalId) return;
+  
+  switch (action) {
+    case 'edit-goal':
+      openGoalForm(goalId);
+      break;
+    case 'delete-goal':
+      deleteGoal(goalId);
+      break;
+  }
+});
+
+// ==========================================
+// History Edit Event Listeners
+// ==========================================
+
+// Progress content actions (event delegation for history edit buttons)
+progressContent.addEventListener('click', (e) => {
+  const target = e.target;
+  const action = target.dataset.action;
+  const activityId = target.dataset.id;
+  
+  if (action === 'open-history' && activityId) {
+    openHistoryModal(activityId);
+  }
+});
+
+// History modal close buttons
+closeHistoryModalBtn.addEventListener('click', closeHistoryModal);
+closeHistoryBtn.addEventListener('click', closeHistoryModal);
+
+// Close history modal on overlay click
+historyModal.addEventListener('click', (e) => {
+  if (e.target === historyModal) {
+    closeHistoryModal();
+  }
+});
+
+// History modal body actions (event delegation)
+historyModalBody.addEventListener('click', (e) => {
+  const target = e.target;
+  const action = target.dataset.action;
+  
+  if (action === 'edit-entry') {
+    const entryIndex = parseInt(target.dataset.index);
+    openEntryEditModal(entryIndex);
+  } else if (action === 'delete-entry') {
+    const entryIndex = parseInt(target.dataset.index);
+    deleteTimeEntry(entryIndex);
+  } else if (action === 'add-entry') {
+    openEntryEditModal(-1);
+  } else if (action === 'toggle-check-history') {
+    const dateStr = target.dataset.date;
+    if (dateStr) {
+      toggleCheckHistory(dateStr);
+    }
+  }
+  
+  // Also handle clicks on parent elements
+  const toggleEl = target.closest('[data-action="toggle-check-history"]');
+  if (toggleEl) {
+    const dateStr = toggleEl.dataset.date;
+    if (dateStr) {
+      toggleCheckHistory(dateStr);
+    }
+  }
+});
+
+// Entry edit modal close buttons
+closeEntryEditModalBtn.addEventListener('click', closeEntryEditModal);
+cancelEntryEditBtn.addEventListener('click', closeEntryEditModal);
+
+// Close entry edit modal on overlay click
+entryEditModal.addEventListener('click', (e) => {
+  if (e.target === entryEditModal) {
+    closeEntryEditModal();
+  }
+});
+
+// Save entry edit button
+saveEntryEditBtn.addEventListener('click', saveEntryEdit);
+
+// Entry edit form submission
+entryEditForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  saveEntryEdit();
+});
 
 // ==========================================
 // Initialization
